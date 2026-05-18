@@ -150,106 +150,131 @@ export default function App() {
     search: matchData ? 'Tap a provider to book' : '',
   };
 
-  const TopBar = () => (
-    <div className="w-full flex justify-between items-center h-full" dir={appLanguage === 'urdu' ? 'rtl' : 'ltr'}>
-      {/* Left: back button or avatar */}
-      <div className={`flex items-center gap-3 ${appLanguage === 'urdu' ? 'flex-row-reverse' : ''}`}>
-        {isDeepView ? (
-          <button
-            onClick={navigateBack}
-            className="p-2 -ml-1 text-primary hover:bg-primary/10 rounded-xl transition-colors active:scale-95"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="w-5 h-5" strokeWidth={2.5} />
-          </button>
-        ) : currentView !== 'onboarding' && currentView !== 'login' && currentView !== 'welcome' ? (
-          <div className="relative">
-            <div className="w-10 h-10 rounded-full border-2 border-primary-container bg-primary flex items-center justify-center">
-              <span className="text-sm font-bold text-on-primary">
-                {userProfile?.name
-                  ?.split(' ')
-                  .slice(0, 2)
-                  .map(n => n[0])
-                  .join('')
-                  .toUpperCase() || 'U'}
-              </span>
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-secondary rounded-full border-2 border-white flex items-center justify-center">
-              <div className="w-1.5 h-1.5 bg-white rounded-full" />
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg">
-              <Shield className="w-5 h-5 text-on-primary fill-current" />
-            </div>
-            <span className="text-xl font-extrabold text-primary tracking-tight">KhidmatGaar</span>
-          </div>
-        )}
+  const TopBar = () => {
+    const getHomepageView = (): ViewState => {
+      if (!hasUserProfile()) return 'welcome';
+      return isProvider ? 'provider_dash' : 'home';
+    };
 
-        {/* Title block */}
-        {currentView !== 'onboarding' && currentView !== 'login' && currentView !== 'welcome' && (
-          <div>
-            <h1 className="text-base font-bold text-primary leading-tight">
-              {viewTitles[currentView]}
-            </h1>
-            {viewSubtitles[currentView] && (
-              <p className="text-[10px] text-on-surface-variant font-medium leading-tight">
-                {viewSubtitles[currentView]}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+    const backText = {
+      english: isProvider ? 'Dashboard' : 'Home',
+      urdu: isProvider ? 'ڈیش بورڈ' : 'ہوم',
+      roman_urdu: isProvider ? 'Dashboard' : 'Home',
+    }[appLanguage];
 
-      {/* Right controls */}
-      <div className={`flex items-center gap-2 ${appLanguage === 'urdu' ? 'flex-row-reverse' : ''}`}>
-        {currentView !== 'login' && currentView !== 'welcome' && (
-          <div className="relative">
+    return (
+      <div className="w-full flex justify-between items-center h-full" dir={appLanguage === 'urdu' ? 'rtl' : 'ltr'}>
+        {/* Left: back button or avatar */}
+        <div className={`flex items-center gap-3 ${appLanguage === 'urdu' ? 'flex-row-reverse' : ''}`}>
+          {isDeepView ? (
             <button
-              onClick={() => setShowLangMenu(v => !v)}
-              className="flex items-center gap-1.5 bg-surface-container-low px-2 py-1.5 rounded-lg border border-outline-variant/30 hover:bg-surface-variant/50 transition-colors"
+              onClick={navigateBack}
+              className="p-2 -ml-1 text-primary hover:bg-primary/10 rounded-xl transition-colors active:scale-95"
+              aria-label="Go back"
             >
-              <Languages className="w-4 h-4 text-primary" />
-              <span className="text-[10px] font-black uppercase text-on-surface-variant hidden xs:block">
-                {appLanguage.replace('_', ' ')}
-              </span>
-              <ChevronDown className={`w-3 h-3 text-outline transition-transform duration-200 ${showLangMenu ? 'rotate-180' : ''}`} />
+              <ArrowLeft className="w-5 h-5" strokeWidth={2.5} />
             </button>
-            {showLangMenu && (
-              <div className="absolute top-full right-0 mt-2 w-36 bg-white rounded-xl shadow-xl border border-outline-variant/30 overflow-hidden z-50">
-                <div className="p-1.5 space-y-1">
-                  {languages.map(lang => (
-                    <button
-                      key={lang.id}
-                      onClick={() => { setAppLanguage(lang.id as AppLanguage); setShowLangMenu(false); }}
-                      className={`w-full flex flex-col items-start px-3 py-2 rounded-lg transition-colors ${appLanguage === lang.id ? 'bg-primary/10 border border-primary/20' : 'hover:bg-surface-container'}`}
-                    >
-                      <span className={`text-xs ${appLanguage === lang.id ? 'font-bold text-primary' : 'font-medium text-on-surface'}`}>{lang.label}</span>
-                      <span className="text-[8px] text-on-surface-variant uppercase tracking-tighter">{lang.sub}</span>
-                    </button>
-                  ))}
-                </div>
+          ) : currentView !== 'onboarding' && currentView !== 'login' && currentView !== 'welcome' ? (
+            <div className="relative">
+              <div className="w-10 h-10 rounded-full border-2 border-primary-container bg-primary flex items-center justify-center">
+                <span className="text-sm font-bold text-on-primary">
+                  {userProfile?.name
+                    ?.split(' ')
+                    .slice(0, 2)
+                    .map(n => n[0])
+                    .join('')
+                    .toUpperCase() || 'U'}
+                </span>
               </div>
-            )}
-          </div>
-        )}
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-secondary rounded-full border-2 border-white flex items-center justify-center">
+                <div className="w-1.5 h-1.5 bg-white rounded-full" />
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg">
+                <Shield className="w-5 h-5 text-on-primary fill-current" />
+              </div>
+              <span className="text-xl font-extrabold text-primary tracking-tight">KhidmatGaar</span>
+            </div>
+          )}
 
-        {(currentView === 'home' || currentView === 'bookings' || currentView === 'provider_dash') && currentView !== 'welcome' && (
-          <button className="relative p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full border border-white" />
-          </button>
-        )}
+          {/* Title block */}
+          {currentView !== 'onboarding' && currentView !== 'login' && currentView !== 'welcome' && (
+            <div>
+              <h1 className="text-base font-bold text-primary leading-tight">
+                {viewTitles[currentView]}
+              </h1>
+              {viewSubtitles[currentView] && (
+                <p className="text-[10px] text-on-surface-variant font-medium leading-tight">
+                  {viewSubtitles[currentView]}
+                </p>
+              </div>
+          )}
+        </div>
 
-        {currentView === 'onboarding' && (
-          <button onClick={() => setCurrentView('home')} className="text-xs font-semibold text-primary glass-card px-4 py-2 rounded-full drop-shadow-sm">
-            Skip
-          </button>
-        )}
+        {/* Right controls */}
+        <div className={`flex items-center gap-2 ${appLanguage === 'urdu' ? 'flex-row-reverse' : ''}`}>
+          {currentView !== getHomepageView() && (
+            <button
+              onClick={() => {
+                setNavHistory([]);
+                setCurrentView(getHomepageView());
+              }}
+              className="flex items-center gap-1 bg-primary/10 text-primary hover:bg-primary/20 transition-all px-2.5 py-1.5 rounded-lg border border-primary/20 shadow-sm active:scale-95 text-[10px] font-extrabold uppercase tracking-wider"
+            >
+              <HomeIcon className="w-3.5 h-3.5" />
+              <span>{backText}</span>
+            </button>
+          )}
+
+          {currentView !== 'login' && currentView !== 'welcome' && (
+            <div className="relative">
+              <button
+                onClick={() => setShowLangMenu(v => !v)}
+                className="flex items-center gap-1.5 bg-surface-container-low px-2 py-1.5 rounded-lg border border-outline-variant/30 hover:bg-surface-variant/50 transition-colors"
+              >
+                <Languages className="w-4 h-4 text-primary" />
+                <span className="text-[10px] font-black uppercase text-on-surface-variant hidden xs:block">
+                  {appLanguage.replace('_', ' ')}
+                </span>
+                <ChevronDown className={`w-3 h-3 text-outline transition-transform duration-200 ${showLangMenu ? 'rotate-180' : ''}`} />
+              </button>
+              {showLangMenu && (
+                <div className="absolute top-full right-0 mt-2 w-36 bg-white rounded-xl shadow-xl border border-outline-variant/30 overflow-hidden z-50">
+                  <div className="p-1.5 space-y-1">
+                    {languages.map(lang => (
+                      <button
+                        key={lang.id}
+                        onClick={() => { setAppLanguage(lang.id as AppLanguage); setShowLangMenu(false); }}
+                        className={`w-full flex flex-col items-start px-3 py-2 rounded-lg transition-colors ${appLanguage === lang.id ? 'bg-primary/10 border border-primary/20' : 'hover:bg-surface-container'}`}
+                      >
+                        <span className={`text-xs ${appLanguage === lang.id ? 'font-bold text-primary' : 'font-medium text-on-surface'}`}>{lang.label}</span>
+                        <span className="text-[8px] text-on-surface-variant uppercase tracking-tighter">{lang.sub}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {(currentView === 'home' || currentView === 'bookings' || currentView === 'provider_dash') && currentView !== 'welcome' && (
+            <button className="relative p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full border border-white" />
+            </button>
+          )}
+
+          {currentView === 'onboarding' && (
+            <button onClick={() => setCurrentView('home')} className="text-xs font-semibold text-primary glass-card px-4 py-2 rounded-full drop-shadow-sm">
+              Skip
+            </button>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const BottomNav = () => {
     const navTabs = isProvider ? [
