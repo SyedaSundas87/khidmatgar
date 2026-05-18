@@ -4,10 +4,11 @@ import {
   CalendarCheck, MapPin, Clock, ShieldCheck, ChevronRight,
   CheckCircle2, AlertCircle, Inbox, Copy, Phone, MessageSquare,
   XCircle, Flag, RefreshCw, Star, Loader2,
-  TriangleAlert, CalendarX, Navigation2, Hash, X, Filter
+  TriangleAlert, CalendarX, Navigation2, Hash, X, Filter, UserX
 } from 'lucide-react';
 import { AppLanguage } from '../App';
 import { getUserProfile } from '../lib/profile';
+import { ProviderCancelSheet } from './ProviderCancelSheet';
 
 export interface SavedBooking {
   booking_id: string;
@@ -68,7 +69,7 @@ export function getBookingsFromStorage(): SavedBooking[] {
   } catch { return []; }
 }
 
-function updateBookingInStorage(booking_id: string, updates: Partial<SavedBooking>) {
+export function updateBookingInStorage(booking_id: string, updates: Partial<SavedBooking>) {
   try {
     const existing = getBookingsFromStorage();
     const updated = existing.map(b => b.booking_id === booking_id ? { ...b, ...updates } : b);
@@ -274,50 +275,51 @@ function CancelSheet({ booking, onClose, onSuccess }: { booking: SavedBooking; o
     onSuccess();
   };
 
-  // Option B: Cancel & Auto-Reschedule — find next best provider
-  const handleReschedule = async () => {
-    setLoading('reschedule'); setError('');
-    try {
-      const res = await fetch('/api/proxy', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          endpoint: 'khadmat-reschedule',
-          booking_id: currentBookingId,
-          provider_id: currentProviderId,
-          provider_name: currentProviderName,
-          service_type: booking.service_type,
-          location: booking.location,
-          booking_date: currentDate,
-          price_pkr: booking.price_pkr,
-          slot: currentSlot,
-          alternatives: booking.alternatives || [],
-          user_email: booking.user_email || getUserProfile()?.email || '',
-        }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      let json: any = {};
-      try { if (text) { let p = JSON.parse(text); json = Array.isArray(p) && p.length === 1 ? p[0] : p; } } catch { json = { status: 'cancelled' }; }
-      setResult(json);
-      if (json.status === 'rescheduled' && json.new_booking) {
-        updateBookingInStorage(booking.booking_id, {
-          status: 'rescheduled',
-          rescheduled_to: {
-            booking_id: json.new_booking.booking_id,
-            provider_name: json.new_booking.provider,
-            provider_id: json.new_booking.provider_id,
-            slot: json.new_booking.slot,
-            slot_label: json.new_booking.slot_label,
-            date: json.new_booking.date,
-          },
+    // Option B: Cancel & Auto-Reschedule — find next best provider
+    const handleReschedule = async () => {
+      setLoading('reschedule'); setError('');
+      try {
+        const res = await fetch('/api/proxy', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            endpoint: 'khadmat-reschedule',
+            action: 'reschedule',
+            booking_id: currentBookingId,
+            provider_id: currentProviderId,
+            provider_name: currentProviderName,
+            service_type: booking.service_type,
+            location: booking.location,
+            booking_date: currentDate,
+            price_pkr: booking.price_pkr,
+            slot: currentSlot,
+            alternatives: booking.alternatives || [],
+            user_email: booking.user_email || getUserProfile()?.email || '',
+          }),
         });
-      } else {
-        updateBookingInStorage(booking.booking_id, { status: 'cancelled' });
-      }
-      onSuccess();
-    } catch { setError('Network error. Please try again.'); }
-    finally { setLoading(null); }
-  };
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        let json: any = {};
+        try { if (text) { let p = JSON.parse(text); json = Array.isArray(p) && p.length === 1 ? p[0] : p; } } catch { json = { status: 'cancelled' }; }
+        setResult(json);
+        if (json.status === 'rescheduled' && json.new_booking) {
+          updateBookingInStorage(booking.booking_id, {
+            status: 'rescheduled',
+            rescheduled_to: {
+              booking_id: json.new_booking.booking_id,
+              provider_name: json.new_booking.provider,
+              provider_id: json.new_booking.provider_id,
+              slot: json.new_booking.slot,
+              slot_label: json.new_booking.slot_label,
+              date: json.new_booking.date,
+            },
+          });
+        } else if (json.status === 'cancelled') {
+          updateBookingInStorage(booking.booking_id, { status: 'cancelled' });
+        }
+        onSuccess();
+      } catch { setError('Network error. Please try again.'); }
+      finally { setLoading(null); }
+    };
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -479,6 +481,7 @@ function BookingCard({ booking, onExpand, expanded, onRefresh, onTrack }: {
   const [copied, setCopied] = useState(false);
   const [copiedField, setCopiedField] = useState<string>('');
   const [showCancel, setShowCancel] = useState(false);
+  const [showProviderCancel, setShowProviderCancel] = useState(false);
   const [showDispute, setShowDispute] = useState(false);
 
   const handleCopy = (e: MouseEvent, text: string, field: string) => {
@@ -504,6 +507,8 @@ function BookingCard({ booking, onExpand, expanded, onRefresh, onTrack }: {
     setConfirmDelete(false);
   };
 
+  const userProfile = getUserProfile();
+  const isProvider = userProfile?.role === 'provider';
   const isTrackable = booking.status === 'confirmed' || booking.status === 'rescheduled';
 
   const handleTrackClick = (e: MouseEvent) => {
@@ -654,17 +659,23 @@ function BookingCard({ booking, onExpand, expanded, onRefresh, onTrack }: {
                 {/* Action Buttons */}
                 <div className="flex gap-2 pt-2">
                   {isTrackable && onTrack && (
-                    <button onClick={handleTrackClick} className="flex-1 py-3.5 bg-primary text-white rounded-2xl font-black text-xs shadow-lg shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 transition-all">
-                      <Navigation2 className="w-4 h-4" />Track Live
+                    <button onClick={handleTrackClick} className="flex-1 py-3 bg-primary text-white rounded-2xl font-black text-[10px] shadow-lg shadow-primary/20 flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                      <Navigation2 className="w-3.5 h-3.5" />Track
                     </button>
                   )}
-                  <button onClick={() => setShowDispute(true)} className="flex-1 py-3.5 border-2 border-outline-variant/30 text-on-surface-variant rounded-2xl font-black text-xs hover:bg-surface-variant active:scale-95 transition-all flex items-center justify-center gap-2">
-                    <Flag className="w-4 h-4" />Report Issue
+                  <button onClick={() => setShowDispute(true)} className="flex-1 py-3 border-2 border-outline-variant/30 text-on-surface-variant rounded-2xl font-black text-[10px] hover:bg-surface-variant active:scale-95 transition-all flex items-center justify-center gap-1.5 leading-tight">
+                    <Flag className="w-3.5 h-3.5" />Report
                   </button>
-                  {(booking.status === 'confirmed' || booking.status === 'pending' || booking.status === 'rescheduled') && (
-                    <button onClick={() => setShowCancel(true)} className="flex-1 py-3.5 border-2 border-error/20 text-error rounded-2xl font-black text-xs hover:bg-error/5 active:scale-95 transition-all flex items-center justify-center gap-2">
-                      <XCircle className="w-4 h-4" />Cancel
-                    </button>
+                  {(booking.status !== 'cancelled' && booking.status !== 'completed') && (
+                    isProvider ? (
+                      <button onClick={() => setShowProviderCancel(true)} className="flex-1 py-3 border-2 border-error/20 text-error rounded-2xl font-black text-[10px] hover:bg-error/5 active:scale-95 transition-all flex items-center justify-center gap-1.5">
+                        <UserX className="w-3.5 h-3.5" />Unable to Attend
+                      </button>
+                    ) : (
+                      <button onClick={() => setShowCancel(true)} className="flex-1 py-3 border-2 border-error/20 text-error rounded-2xl font-black text-[10px] hover:bg-error/5 active:scale-95 transition-all flex items-center justify-center gap-1.5">
+                        <XCircle className="w-3.5 h-3.5" />Cancel
+                      </button>
+                    )
                   )}
                 </div>
               </div>
@@ -674,6 +685,7 @@ function BookingCard({ booking, onExpand, expanded, onRefresh, onTrack }: {
       </motion.div>
 
       <AnimatePresence>{showCancel && <CancelSheet booking={booking} onClose={() => setShowCancel(false)} onSuccess={() => { setShowCancel(false); onRefresh(); }} />}</AnimatePresence>
+      <AnimatePresence>{showProviderCancel && <ProviderCancelSheet booking={booking} onClose={() => setShowProviderCancel(false)} onSuccess={() => { setShowProviderCancel(false); onRefresh(); }} />}</AnimatePresence>
       <AnimatePresence>{showDispute && <DisputeSheet booking={booking} onClose={() => setShowDispute(false)} onSuccess={() => { setShowDispute(false); onRefresh(); }} />}</AnimatePresence>
     </>
   );

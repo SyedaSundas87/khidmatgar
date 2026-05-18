@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Navigation2, MapPin, Clock, CheckSquare, Square,
   Star, CheckCircle2, AlertCircle, Loader2, ChevronRight,
-  Phone, MessageSquare, ArrowRight, Package, Zap, Shield,
+  Phone, MessageSquare, ArrowRight, Package, Activity, Shield,
   ThumbsUp, Send, RefreshCw, Upload, Mic, Trash2, Image as ImageIcon
 } from 'lucide-react';
 import { AppLanguage } from '../App';
@@ -108,6 +108,34 @@ function StageStepper({ current, appLanguage }: { current: Stage; appLanguage: A
   );
 }
 
+// ─── ERROR STATE COMPONENT ───────────────────────────────────────────────────
+function ErrorState({ message, onRetry, appLanguage }: { message: string; onRetry: () => void; appLanguage: AppLanguage }) {
+  const t = {
+    english: { retry: "Try Again", error: "Connection Error" },
+    urdu: { retry: "دوبارہ کوشش کریں", error: "کنکشن کی خرابی" },
+    roman_urdu: { retry: "Try Again", error: "Connection Error" }
+  }[appLanguage];
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[30vh] gap-4 p-6 text-center">
+      <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center text-error border border-error/20">
+        <AlertCircle className="w-8 h-8" />
+      </div>
+      <div>
+        <h3 className="text-base font-black text-on-surface">{t.error}</h3>
+        <p className="text-xs text-outline mt-1 leading-relaxed max-w-[240px]">{message}</p>
+      </div>
+      <button
+        onClick={onRetry}
+        className="mt-2 px-6 py-3 bg-primary text-white rounded-2xl font-black text-sm flex items-center gap-2 active:scale-95 transition-all shadow-lg shadow-primary/20"
+      >
+        <RefreshCw className="w-4 h-4" />
+        {t.retry}
+      </button>
+    </div>
+  );
+}
+
 // ─── EN ROUTE VIEW ────────────────────────────────────────────────────────────
 function EnRouteView({
   payload,
@@ -141,12 +169,23 @@ function EnRouteView({
     }
   }[appLanguage];
 
+  const fetchStatus = () => {
+    setLoading(true);
+    setError('');
+    callWF5('en_route', { ...payload, distance_km: payload.distance_km || 7 })
+      .then(r => { setResult(r); setError(''); })
+      .catch((err) => { 
+        setError(err.message === 'Failed to fetch' || err.message.includes('HTTP') 
+          ? 'We are having trouble connecting to the tracking server. Please check your internet or try again.' 
+          : 'Could not reach server. Showing estimated data.');
+      })
+      .finally(() => setLoading(false));
+  };
+
   useEffect(() => {
     if (hasFired.current) return;
     hasFired.current = true;
-    callWF5('en_route', { ...payload, distance_km: payload.distance_km || 7 })
-      .then(r => { setResult(r); setLoading(false); })
-      .catch(() => { setError('Could not reach server. Showing estimated data.'); setLoading(false); });
+    fetchStatus();
   }, []);
 
   // Countdown simulation
@@ -170,10 +209,17 @@ function EnRouteView({
     );
   }
 
+  if (error && !result) {
+    return <ErrorState message={error} onRetry={fetchStatus} appLanguage={appLanguage} />;
+  }
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
       {error && (
-        <p className="text-[10px] text-outline bg-surface-container-low rounded-xl px-3 py-2 border border-outline-variant/20">{error}</p>
+        <div className="flex items-center gap-2 bg-error/5 text-error px-4 py-2.5 rounded-2xl border border-error/20 mb-2">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+          <p className="text-[10px] font-bold leading-tight">{error}</p>
+        </div>
       )}
 
       {/* ETA Hero */}
@@ -255,12 +301,23 @@ function ArrivedView({
   const [error, setError] = useState('');
   const hasFired = useRef(false);
 
+  const fetchChecklist = () => {
+    setLoading(true);
+    setError('');
+    callWF5('arrived', { ...payload })
+      .then(r => { setResult(r); setError(''); })
+      .catch((err) => { 
+        setError(err.message.includes('HTTP') || err.message === 'Failed to fetch'
+          ? 'Unable to sync with server. Using offline checklist mode.'
+          : 'Using offline checklist.');
+      })
+      .finally(() => setLoading(false));
+  };
+
   useEffect(() => {
     if (hasFired.current) return;
     hasFired.current = true;
-    callWF5('arrived', { ...payload })
-      .then(r => { setResult(r); setLoading(false); })
-      .catch(() => { setError('Using offline checklist.'); setLoading(false); });
+    fetchChecklist();
   }, []);
 
   const checklist = result?.service_checklist || [
@@ -286,7 +343,15 @@ function ArrivedView({
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-      {error && <p className="text-[10px] text-outline bg-surface-container-low rounded-xl px-3 py-2">{error}</p>}
+      {error && (
+        <div className="flex items-center gap-2 bg-secondary/5 text-secondary px-4 py-2.5 rounded-2xl border border-secondary/20 mb-2">
+          <Activity className="w-3.5 h-3.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-[10px] font-bold leading-tight">{error}</p>
+          </div>
+          <button onClick={fetchChecklist} className="text-[9px] font-black underline uppercase">Retry Sync</button>
+        </div>
+      )}
 
       {/* Arrival Banner */}
       <div className="glass-card rounded-[2rem] p-5 border-l-[4px] border-l-secondary bg-secondary/5">
@@ -371,16 +436,27 @@ function CompletedView({
   const [error, setError] = useState('');
   const hasFired = useRef(false);
 
-  useEffect(() => {
-    if (hasFired.current) return;
-    hasFired.current = true;
+  const logCompletion = () => {
+    setLoading(true);
+    setError('');
     callWF5('completed', { ...payload, final_price_pkr: payload.price_pkr })
       .then(r => {
         setResult(r);
         setFinalPrice(String(r?.payment?.final_pkr || payload.price_pkr));
-        setLoading(false);
+        setError('');
       })
-      .catch(() => { setError('Using local data.'); setLoading(false); });
+      .catch((err) => { 
+        setError(err.message.includes('HTTP') || err.message === 'Failed to fetch'
+          ? 'Network error while logging completion. Your payment details might not sync immediately.'
+          : 'Using local data.');
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    if (hasFired.current) return;
+    hasFired.current = true;
+    logCompletion();
   }, []);
 
   const quotedPrice = payload.price_pkr;
@@ -400,7 +476,12 @@ function CompletedView({
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-      {error && <p className="text-[10px] text-outline bg-surface-container-low rounded-xl px-3 py-2">{error}</p>}
+      {error && (
+        <div className="bg-error/5 text-error px-4 py-3 rounded-2xl border border-error/20 mb-2 flex items-center justify-between">
+          <p className="text-[10px] font-bold leading-tight flex-1 mr-4">{error}</p>
+          <button onClick={logCompletion} className="text-[9px] font-black underline uppercase shrink-0">Retry Log</button>
+        </div>
+      )}
 
       {/* Success Banner */}
       <div className="flex flex-col items-center text-center py-4 space-y-2">
@@ -615,8 +696,11 @@ function FeedbackView({
         image_count: attachedImages.length,
       });
       setResult(res);
-    } catch {
-      setError('Could not submit. Please try again.');
+      setError('');
+    } catch (err: any) {
+      setError(err.message === 'Failed to fetch' || err.message.includes('HTTP')
+        ? 'Network error. We could not sync your feedback with the server. Please check your connection and try again.'
+        : 'Could not submit feedback. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -828,7 +912,20 @@ function FeedbackView({
         )}
       </div>
 
-      {error && <p className="text-xs text-error font-bold text-center">{error}</p>}
+      {error && (
+        <div className="bg-error/5 border border-error/20 rounded-2xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-error shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-xs font-bold text-error leading-relaxed">{error}</p>
+            <button 
+              onClick={handleSubmit} 
+              className="mt-2 text-[10px] font-black uppercase text-error underline underline-offset-4 hover:opacity-80"
+            >
+              Retry Submission
+            </button>
+          </div>
+        </div>
+      )}
 
       <button
         onClick={handleSubmit}
@@ -869,7 +966,7 @@ export function ServiceQualityView({ payload, initialStage = 'en_route', onCompl
       <div className="glass-card rounded-[2rem] p-4 border border-outline-variant/20">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Zap className="w-5 h-5 text-primary fill-primary/20" />
+            <Activity className="w-5 h-5 text-primary fill-primary/20" />
           </div>
           <div>
             <h2 className="text-sm font-black text-on-surface">{appLanguage === 'urdu' ? 'لائیو سروس ٹریکنگ' : 'Live Service Tracking'}</h2>
