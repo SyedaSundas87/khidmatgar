@@ -85,8 +85,8 @@ Our AI agents automatically extract the intent, determine the specific service r
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-org/khidmatgar.git
-   cd khidmatgar
+   git clone https://github.com/your-org/gharfix.git
+   cd gharfix
    ```
 
 2. **Install dependencies:**
