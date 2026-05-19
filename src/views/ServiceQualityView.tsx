@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { AppLanguage } from '../App';
 import { getUserProfile } from '../lib/profile';
+import { getApiUrl } from '../lib/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Stage = 'en_route' | 'arrived' | 'completed' | 'feedback';
@@ -35,7 +36,7 @@ interface WF5ViewProps {
 
 // ─── WF5 API Caller ───────────────────────────────────────────────────────────
 async function callWF5(action: Stage, data: WF5Payload & Record<string, any>) {
-  const url = '/api/proxy';
+  const url = getApiUrl('/api/proxy');
   console.log(`[WF5] Calling proxy for stage: ${action}`, data);
   try {
     const res = await fetch(url, {

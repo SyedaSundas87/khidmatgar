@@ -8,6 +8,7 @@ import {
 import { saveBookingToStorage } from './BookingsListView';
 import { AppLanguage } from '../App';
 import { getUserProfile } from '../lib/profile';
+import { getApiUrl } from '../lib/api';
 
 export interface BookingPayload {
   action: 'confirm';
@@ -106,7 +107,7 @@ export function BookingView({ payload, onBack, onTrack, appLanguage }: BookingVi
         user_email: webhookPayload.user_email || profile?.email || '',
       };
 
-      const response = await fetch('/api/proxy', {
+      const response = await fetch(getApiUrl('/api/proxy'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

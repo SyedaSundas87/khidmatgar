@@ -121,6 +121,15 @@
 - **Output:** New functioning debug APK built at `android/app/build/outputs/apk/debug/app-debug.apk` and copied to the root.
 - **Timestamp:** 2026-05-20T02:15:00Z
 
+## Step 16: Resolve WebView/Capacitor API Connection (n8n Workflow) Mismatch
+- **Problem:** When running inside the Android APK (native WebView), the frontend makes relative API requests (e.g. `fetch('/api/proxy')`). These resolve to `http://localhost/api/proxy` (due to local WebView origin), failing to connect to the express backend on Google Cloud Run. This prevented n8n workflows from triggering at all inside the installed APK.
+- **Action:**
+  - Added `VITE_API_BASE_URL=https://khidmatgar-cjq6e42ila-el.a.run.app` to `.env`.
+  - Created a dynamic API URL utility `src/lib/api.ts` that checks if the platform is native via `Capacitor.isNativePlatform()`. If native, it prepends the backend URL; otherwise, it keeps relative paths.
+  - Modified all 7 UI view files initiating `/api/proxy` requests (`BookingsListView.tsx`, `BookingView.tsx`, `ChatView.tsx`, `HomeView.tsx`, `ProviderCancelSheet.tsx`, `ProviderDashView.tsx`, `ServiceQualityView.tsx`) to wrap fetch targets in the `getApiUrl` helper.
+  - Recompiled and synchronized the native application to generate a fully operational native debug APK.
+- **Timestamp:** 2026-05-20T03:00:00Z
+
 ## Final Status
-- **Status:** SUCCESS (Package Name Mismatch Fixed, Android Debug APK Recompiled & Synced to GitHub)
+- **Status:** SUCCESS (n8n Workflow Connection Resolved, APK Recompiled & Pushed to GitHub)
 

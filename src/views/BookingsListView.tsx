@@ -9,6 +9,7 @@ import {
 import { AppLanguage } from '../App';
 import { getUserProfile } from '../lib/profile';
 import { ProviderCancelSheet } from './ProviderCancelSheet';
+import { getApiUrl } from '../lib/api';
 
 export interface SavedBooking {
   booking_id: string;
@@ -149,7 +150,7 @@ function DisputeSheet({ booking, onClose, onSuccess }: { booking: SavedBooking; 
         alternatives: booking.alternatives || [],
         user_email: booking.user_email || getUserProfile()?.email || '',
       };
-      const res = await fetch('/api/proxy', {
+      const res = await fetch(getApiUrl('/api/proxy'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ endpoint: 'khadmat-dispute', ...payload }),
       });
@@ -252,7 +253,7 @@ function CancelSheet({ booking, onClose, onSuccess }: { booking: SavedBooking; o
   const handleCancelOnly = async () => {
     setLoading('cancel'); setError('');
     try {
-      await fetch('/api/proxy', {
+      await fetch(getApiUrl('/api/proxy'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           endpoint: 'khadmat-reschedule',
@@ -279,7 +280,7 @@ function CancelSheet({ booking, onClose, onSuccess }: { booking: SavedBooking; o
     const handleReschedule = async () => {
       setLoading('reschedule'); setError('');
       try {
-        const res = await fetch('/api/proxy', {
+        const res = await fetch(getApiUrl('/api/proxy'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             endpoint: 'khadmat-reschedule',

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { SavedBooking, updateBookingInStorage } from './BookingsListView';
 import { getUserProfile } from '../lib/profile';
+import { getApiUrl } from '../lib/api';
 
 interface ProviderCancelSheetProps {
   booking: SavedBooking;
@@ -60,7 +61,7 @@ export function ProviderCancelSheet({ booking, onClose, onSuccess }: ProviderCan
 
       console.log('[ProviderCancelSheet] Sending payload:', payload);
 
-      const res = await fetch('/api/proxy', {
+      const res = await fetch(getApiUrl('/api/proxy'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

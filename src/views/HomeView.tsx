@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { extractIntent, isPlaceholder, i18nResponses } from '../lib/intent';
 import { AppLanguage } from '../App';
 import { getUserProfile } from '../lib/profile';
+import { getApiUrl } from '../lib/api';
 
 interface HomeViewProps {
   onServiceTriggered: (data: any) => void;
@@ -178,7 +179,7 @@ export function HomeView({ onServiceTriggered, appLanguage }: HomeViewProps) {
 
     console.log('Triggering Webhook with:', { compiledRawMessage, finalIntent });
     try {
-      const response = await fetch('/api/proxy', {
+      const response = await fetch(getApiUrl('/api/proxy'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -3,6 +3,7 @@ import { TrendingUp, Wallet, Star, Activity, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { AppLanguage } from '../App';
 import { getProviderData, saveProviderData } from '../lib/profile';
+import { getApiUrl } from '../lib/api';
 
 interface ProviderDashViewProps {
   appLanguage: AppLanguage;
@@ -56,7 +57,7 @@ export function ProviderDashView({ appLanguage, providerId }: ProviderDashViewPr
       setLoading(true);
       try {
         // Replace with your actual WF8 webhook URL
-        const response = await fetch('/api/proxy', {
+        const response = await fetch(getApiUrl('/api/proxy'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ endpoint: 'khadmat-provider-dashboard', provider_id: providerId }),
