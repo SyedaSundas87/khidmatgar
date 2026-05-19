@@ -112,5 +112,15 @@
 - **GitHub Sync:** Pushed the compiled `app-debug.apk` directly to the root of the repository (`SyedaSundas87/khidmatgar`) on the `main` branch.
 - **Timestamp:** 2026-05-20T01:37:00Z
 
+## Step 15: Resolve Android Launch Crash (Package Name Mismatch)
+- **Problem:** The app crashed immediately after installation because of a mismatch between the configured `applicationId` / `namespace` (`com.gharfix.app`) and the Java package folder structure/MainActivity declaration (`com.khidmatgar.app`). This caused a `ClassNotFoundException` when Android tried to boot `com.gharfix.app.MainActivity`.
+- **Action:**
+  - Deleted the mismatched `android/app/src/main/java/com/khidmatgar` directory.
+  - Created the correct path `android/app/src/main/java/com/gharfix/app/MainActivity.java` with the package declaration `package com.gharfix.app;`.
+  - Rebuilt the web app (`npm run build`), synchronized Capacitor assets (`npx cap sync android`), and compiled a new, clean debug APK (`.\gradlew.bat assembleDebug --no-daemon`).
+- **Output:** New functioning debug APK built at `android/app/build/outputs/apk/debug/app-debug.apk` and copied to the root.
+- **Timestamp:** 2026-05-20T02:15:00Z
+
 ## Final Status
-- **Status:** SUCCESS (Deployed Live on Google Cloud Run, Generated & Synced Android Debug APK to GitHub)
+- **Status:** SUCCESS (Package Name Mismatch Fixed, Android Debug APK Recompiled & Synced to GitHub)
+
