@@ -104,5 +104,12 @@
 - **URL:** [https://khidmatgar-cjq6e42ila-el.a.run.app](https://khidmatgar-cjq6e42ila-el.a.run.app)
 - **Timestamp:** 2026-05-18T23:15:00Z
 
+## Step 14: Generate Debug APK
+- **Action:** Built production web assets using `npm run build`.
+- **Action:** Synced Capacitor assets using `npx cap sync android`.
+- **Action:** Configured temporary `JAVA_HOME` pointing to JDK 21 (`C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot`) and executed `.\gradlew.bat assembleDebug --no-daemon` to bypass environment caching.
+- **Output:** Built debug APK at `android/app/build/outputs/apk/debug/app-debug.apk` (Size: 4.3 MB).
+- **Timestamp:** 2026-05-20T01:03:00Z
+
 ## Final Status
-- **Status:** SUCCESS (Deployed Live on Google Cloud Run)
+- **Status:** SUCCESS (Deployed Live on Google Cloud Run & Generated Android Debug APK)
