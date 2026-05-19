@@ -132,8 +132,9 @@ export default function App() {
 
   // View title map
   const viewTitles: Record<ViewState, string> = {
-    welcome: 'KhidmatGaar',
-    login: 'KhidmatGaar',
+    welcome: 'GharFix',
+    login: 'GharFix',
+    onboarding: 'GharFix',
     home: userProfile?.name ? `Asalam-o-Alaikum, ${userProfile.name.split(' ')[0]}` : 'Asalam-o-Alaikum',
     search: 'Provider Matches',
     booking: 'Confirm Booking',
@@ -173,7 +174,7 @@ export default function App() {
             >
               <ArrowLeft className="w-5 h-5" strokeWidth={2.5} />
             </button>
-          ) : currentView !== 'login' && currentView !== 'welcome' ? (
+          ) : currentView !== 'onboarding' && currentView !== 'login' && currentView !== 'welcome' ? (
             <div className="relative">
               <div className="w-10 h-10 rounded-full border-2 border-primary-container bg-primary flex items-center justify-center">
                 <span className="text-sm font-bold text-on-primary">
@@ -194,12 +195,12 @@ export default function App() {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg">
                 <Shield className="w-5 h-5 text-on-primary fill-current" />
               </div>
-              <span className="text-xl font-extrabold text-primary tracking-tight">KhidmatGaar</span>
+              <span className="text-xl font-extrabold text-primary tracking-tight">GharFix</span>
             </div>
           )}
 
           {/* Title block */}
-          {currentView !== 'login' && currentView !== 'welcome' && (
+          {currentView !== 'onboarding' && currentView !== 'login' && currentView !== 'welcome' && (
             <div>
               <h1 className="text-base font-bold text-primary leading-tight">
                 {viewTitles[currentView]}
@@ -263,6 +264,12 @@ export default function App() {
             <button className="relative p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors">
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full border border-white" />
+            </button>
+          )}
+
+          {currentView === 'onboarding' && (
+            <button onClick={() => setCurrentView('home')} className="text-xs font-semibold text-primary glass-card px-4 py-2 rounded-full drop-shadow-sm">
+              Skip
             </button>
           )}
         </div>

@@ -30,6 +30,7 @@
   --color-surface-container: #e9eaeb;
   --color-surface-container-high: #e1e3e5;
   --color-surface-container-highest: #dadbdc;
+
   --font-sans: "Plus Jakarta Sans", sans-serif;
   --font-heading: "Plus Jakarta Sans", sans-serif;
   --font-urdu: "Noto Serif", serif;
@@ -58,8 +59,54 @@
     border: 2px solid transparent;
   }
 
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* ── RTL Support for Urdu ── */
+  [dir="rtl"] {
+    direction: rtl;
+    text-align: right;
+  }
+
+  [dir="rtl"] .flex-row-reverse-rtl {
+    flex-direction: row-reverse;
+  }
+
+  [dir="rtl"] .ml-auto-rtl {
+    margin-left: auto;
+    margin-right: 0;
+  }
+
+  [dir="rtl"] .mr-auto-rtl {
+    margin-right: auto;
+    margin-left: 0;
+  }
+
+  /* Flex direction helpers for RTL */
+  [dir="rtl"] .flex.justify-between {
+    flex-direction: row-reverse;
+  }
+
+  [dir="rtl"] .flex.items-center.gap-2 {
+    flex-direction: row-reverse;
+  }
+
+  [dir="rtl"] .flex.items-center.gap-3 {
+    flex-direction: row-reverse;
+  }
+
+  [dir="rtl"] .flex.gap-1.mt-1.mb-1 {
+    flex-direction: row-reverse;
+  }
+
+  [dir="rtl"] .flex.gap-2 {
+    flex-direction: row-reverse;
+  }
 }
 
 body {
@@ -68,9 +115,3 @@ body {
   color: var(--color-on-background);
   -webkit-font-smoothing: antialiased;
 }
-
-:root {
-  --sat: env(safe-area-inset-top);
-  --sab: env(safe-area-inset-bottom);
-}
-.pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }

@@ -35,7 +35,7 @@ export interface SavedBooking {
   dispute_result?: any;
 }
 
-const STORAGE_KEY = 'khidmatgaar_bookings';
+const STORAGE_KEY = 'gharfix_bookings';
 
 export function saveBookingToStorage(receipt: any, payload: any) {
   try {

@@ -13,9 +13,13 @@ export interface UserProfile {
   provider_id?: string;
 }
 
-const PROFILE_STORAGE_KEY = 'khidmatgaar_user_profile';
-const PROVIDER_DATA_STORAGE_KEY = 'khidmatgaar_provider_data';
+const PROFILE_STORAGE_KEY = 'gharfix_user_profile';
+const PROVIDER_DATA_STORAGE_KEY = 'gharfix_provider_data';
 
+/**
+ * Get the current user profile from localStorage
+ * Returns null if no profile exists
+ */
 export function getUserProfile(): UserProfile | null {
   try {
     const stored = localStorage.getItem(PROFILE_STORAGE_KEY);
@@ -26,6 +30,9 @@ export function getUserProfile(): UserProfile | null {
   }
 }
 
+/**
+ * Save or update the user profile in localStorage
+ */
 export function saveUserProfile(profile: UserProfile): boolean {
   try {
     localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
@@ -36,23 +43,44 @@ export function saveUserProfile(profile: UserProfile): boolean {
   }
 }
 
+/**
+ * Update specific fields of the user profile
+ */
 export function updateUserProfile(updates: Partial<UserProfile>): boolean {
   try {
     const existing = getUserProfile();
-    if (!existing) return false;
-    return saveUserProfile({ ...existing, ...updates });
+    if (!existing) {
+      console.warn('No existing profile to update');
+      return false;
+    }
+    const updated: UserProfile = {
+      ...existing,
+      ...updates,
+    };
+    return saveUserProfile(updated);
   } catch (error) {
     console.error('Failed to update user profile:', error);
     return false;
   }
 }
 
+/**
+ * Create and save a new user profile (for User login)
+ */
 export function loginAsUser(name: string, email: string): UserProfile {
-  const profile: UserProfile = { name, email, joined_at: new Date().toISOString(), role: 'user' };
+  const profile: UserProfile = {
+    name,
+    email,
+    joined_at: new Date().toISOString(),
+    role: 'user',
+  };
   saveUserProfile(profile);
   return profile;
 }
 
+/**
+ * Create and save a new provider profile (for Provider login)
+ */
 export function loginAsProvider(providerId: string): UserProfile {
   const profile: UserProfile = {
     name: `Provider ${providerId}`,
@@ -65,6 +93,9 @@ export function loginAsProvider(providerId: string): UserProfile {
   return profile;
 }
 
+/**
+ * Clear the user profile (logout) and any associated provider data
+ */
 export function clearUserProfile(): boolean {
   try {
     localStorage.removeItem(PROFILE_STORAGE_KEY);
@@ -76,18 +107,32 @@ export function clearUserProfile(): boolean {
   }
 }
 
+/**
+ * Check if a user profile exists
+ */
 export function hasUserProfile(): boolean {
   return getUserProfile() !== null;
 }
 
+/**
+ * Get user name or return default
+ */
 export function getUserName(): string {
-  return getUserProfile()?.name || 'Guest User';
+  const profile = getUserProfile();
+  return profile?.name || 'Guest User';
 }
 
+/**
+ * Get user email or return empty string
+ */
 export function getUserEmail(): string {
-  return getUserProfile()?.email || '';
+  const profile = getUserProfile();
+  return profile?.email || '';
 }
 
+/**
+ * Get stored provider dashboard data from localStorage
+ */
 export function getProviderData(): any | null {
   try {
     const stored = localStorage.getItem(PROVIDER_DATA_STORAGE_KEY);
@@ -98,6 +143,9 @@ export function getProviderData(): any | null {
   }
 }
 
+/**
+ * Save provider dashboard data to localStorage
+ */
 export function saveProviderData(data: any): boolean {
   try {
     localStorage.setItem(PROVIDER_DATA_STORAGE_KEY, JSON.stringify(data));
