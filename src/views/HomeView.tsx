@@ -5,6 +5,7 @@ import { extractIntent, isPlaceholder, i18nResponses } from '../lib/intent';
 import { AppLanguage } from '../App';
 import { getUserProfile } from '../lib/profile';
 import { getApiUrl } from '../lib/api';
+import { speechUtils } from '../lib/speech';
 
 interface HomeViewProps {
   onServiceTriggered: (data: any) => void;
@@ -45,45 +46,37 @@ export function HomeView({ onServiceTriggered, appLanguage }: HomeViewProps) {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pendingTranscript, setPendingTranscript] = useState<string | null>(null);
-  const recognitionRef = useRef<any>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isAITyping]);
 
-  // Handle Speech Recognition Setup
-  useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setPendingTranscript(transcript);
-        setIsListening(false);
-        
-        const aiMsg: ChatMessage = { 
-          id: (Date.now() + 5).toString(), 
-          text: `I heard: "${transcript}"\n\nIs this correct?`, 
-          sender: 'ai' 
-        };
-        setMessages(prev => [...prev, aiMsg]);
-      };
-
-      recognitionRef.current.onerror = () => setIsListening(false);
-      recognitionRef.current.onend = () => setIsListening(false);
-    }
-  }, []);
-
-  const toggleListening = () => {
+  const toggleListening = async () => {
     if (isListening) {
-      recognitionRef.current?.stop();
+      await speechUtils.stopListening();
+      setIsListening(false);
     } else {
       setIsListening(true);
-      recognitionRef.current?.start();
+      await speechUtils.startListening(
+        (transcript) => {
+          setPendingTranscript(transcript);
+          const aiMsg: ChatMessage = { 
+            id: (Date.now() + 5).toString(), 
+            text: `I heard: "${transcript}"\n\nIs this correct?`, 
+            sender: 'ai' 
+          };
+          setMessages(prev => [...prev, aiMsg]);
+        },
+        (error) => {
+          console.error(error);
+          setIsListening(false);
+        },
+        () => {
+          setIsListening(false);
+        },
+        intent.detectedLanguage === 'urdu' ? 'ur-PK' : 'en-US'
+      );
     }
   };
 

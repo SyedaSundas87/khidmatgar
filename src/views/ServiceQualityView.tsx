@@ -9,6 +9,7 @@ import {
 import { AppLanguage } from '../App';
 import { getUserProfile } from '../lib/profile';
 import { getApiUrl } from '../lib/api';
+import { speechUtils } from '../lib/speech';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Stage = 'en_route' | 'arrived' | 'completed' | 'feedback';
@@ -569,47 +570,31 @@ function FeedbackView({
   const [attachedImages, setAttachedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const recognitionRef = useRef<any>(null);
 
   const TAGS = ['On time', 'Professional', 'Clean work', 'Good value', 'Friendly'];
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  // Initialize Speech Recognition
-  useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.onresult = (event: any) => {
-        const speechTranscript = Array.from(event.results)
-          .map((result: any) => result[0].transcript)
-          .join('');
-        setTranscript(prev => prev + (prev ? ' ' : '') + speechTranscript);
-      };
-      recognitionRef.current.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setError('Could not recognize speech. Please try again.');
-        setIsRecording(false);
-      };
-      recognitionRef.current.onend = () => {
-        setIsRecording(false);
-      };
-    }
-  }, []);
-
   // Start/Stop Recording
-  const toggleRecording = () => {
-    if (!recognitionRef.current) {
-      setError('Speech recognition not supported in your browser.');
-      return;
-    }
+  const toggleRecording = async () => {
     if (isRecording) {
-      recognitionRef.current.stop();
+      await speechUtils.stopListening();
       setIsRecording(false);
     } else {
       setIsRecording(true);
-      recognitionRef.current.start();
+      await speechUtils.startListening(
+        (transcriptText) => {
+          setTranscript(prev => prev + (prev ? ' ' : '') + transcriptText);
+        },
+        (errorMsg) => {
+          console.error(errorMsg);
+          setError('Could not recognize speech. Please try again.');
+          setIsRecording(false);
+        },
+        () => {
+          setIsRecording(false);
+        },
+        'en-US' // Or use app language if you prefer, but sticking to en-US for generic fallback
+      );
     }
   };
 

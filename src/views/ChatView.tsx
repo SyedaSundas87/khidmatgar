@@ -5,6 +5,7 @@ import { extractIntent, isPlaceholder, i18nResponses } from '../lib/intent';
 import { AppLanguage } from '../App';
 import { getUserProfile } from '../lib/profile';
 import { getApiUrl } from '../lib/api';
+import { speechUtils } from '../lib/speech';
 
 interface Message {
   id: string;
@@ -57,7 +58,6 @@ export function ChatView({ onServiceTriggered, appLanguage }: ChatViewProps) {
   const responses = i18nResponses[lang];
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     scrollToBottom();
@@ -67,37 +67,26 @@ export function ChatView({ onServiceTriggered, appLanguage }: ChatViewProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Speech Recognition Setup
-  useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInputText(transcript);
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-    }
-  }, []);
-
-  const toggleListening = () => {
+  const toggleListening = async () => {
     if (isListening) {
-      recognitionRef.current?.stop();
+      await speechUtils.stopListening();
+      setIsListening(false);
     } else {
       setIsListening(true);
-      recognitionRef.current?.start();
+      await speechUtils.startListening(
+        (transcript) => {
+          setInputText(transcript);
+          setIsListening(false);
+        },
+        (error) => {
+          console.error(error);
+          setIsListening(false);
+        },
+        () => {
+          setIsListening(false);
+        },
+        intent.detectedLanguage === 'urdu' ? 'ur-PK' : 'en-US'
+      );
     }
   };
 
