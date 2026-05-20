@@ -9,6 +9,38 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+  // ──────────────────────────────────────────────────────────
+  // CORS Middleware — required for Capacitor native WebView
+  // The APK loads from https://localhost (Capacitor default),
+  // so cross-origin requests to Cloud Run are blocked without this.
+  // ──────────────────────────────────────────────────────────
+  const ALLOWED_ORIGINS = [
+    'https://localhost',           // Capacitor Android (default scheme)
+    'http://localhost',            // Capacitor Android (legacy / fallback)
+    'capacitor://localhost',       // Capacitor iOS
+    'http://localhost:3000',       // Local dev
+    'http://localhost:5173',       // Vite dev server
+  ];
+
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && ALLOWED_ORIGINS.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else if (!origin) {
+      // Allow requests with no origin (e.g. server-to-server, curl, mobile apps)
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Max-Age', '86400');
+
+    // Handle preflight OPTIONS requests immediately
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
+    next();
+  });
+
   // API Proxy Route for Webhooks
   app.post("/api/proxy", async (req, res) => {
     const { endpoint, ...body } = req.body;
@@ -40,10 +72,14 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  // Vite middleware for development (auto-detects Cloud Run environment to serve production build)
+  const isProduction = process.env.NODE_ENV === "production" || !!process.env.K_SERVICE || !!process.env.PORT;
+  if (!isProduction) {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { 
+        middlewareMode: true,
+        allowedHosts: true
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);

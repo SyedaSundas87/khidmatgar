@@ -138,7 +138,14 @@
   - Synchronized remaining frontend views, landing page cleaner assets, and speech logic structures to the `khidmatgar` GitHub repository (`SyedaSundas87/khidmatgar`) with the updated helper script.
 - **Timestamp:** 2026-05-20T19:42:00Z
 
+## Step 18: Resolve Cloud Run Web App Host Blocked Error
+- **Problem:** Opening the web app on Google Cloud Run threw the error `Blocked request. This host ("khidmatgar-cjq6e42ila-el.a.run.app") is not allowed` due to Vite 6's Host Restriction security check blocking non-local host requests in development middleware mode.
+- **Action:**
+  - Modified `server.ts` to automatically detect Cloud Run hosting using the standard `K_SERVICE` and `PORT` environment variables to default into production mode (serving the static pre-compiled `dist` folder files).
+  - Configured `allowedHosts: true` within `createViteServer` config in `server.ts` to fully bypass host restrictions if development mode is ever run in the cloud.
+  - Successfully built the application using `npm run build` locally.
+  - Deployed the project to Google Cloud Run (`khidmatgar` project) successfully.
+- **Timestamp:** 2026-05-20T23:39:00Z
+
 ## Final Status
-- **Status:** SUCCESS (Native debug APK fully compiled, dual GitHub repositories synchronized, speech and proxy layers functional)
-
-
+- **Status:** SUCCESS (Native debug APK and web app versions fully functional; host blocked errors resolved; dual repositories synced)
