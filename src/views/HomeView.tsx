@@ -5,7 +5,7 @@ import { extractIntent, isPlaceholder, i18nResponses } from '../lib/intent';
 import { AppLanguage } from '../App';
 import { getUserProfile } from '../lib/profile';
 import { getApiUrl } from '../lib/api';
-import { speechUtils } from '../lib/speech';
+import { Capacitor } from '@capacitor/core';
 
 interface HomeViewProps {
   onServiceTriggered: (data: any) => void;
@@ -46,37 +46,91 @@ export function HomeView({ onServiceTriggered, appLanguage }: HomeViewProps) {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pendingTranscript, setPendingTranscript] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isAITyping]);
 
-  const toggleListening = async () => {
-    if (isListening) {
-      await speechUtils.stopListening();
-      setIsListening(false);
-    } else {
-      setIsListening(true);
-      await speechUtils.startListening(
-        (transcript) => {
+  // Handle Speech Recognition Setup
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+        
+        recognitionRef.current.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
           setPendingTranscript(transcript);
+          setIsListening(false);
+          
           const aiMsg: ChatMessage = { 
             id: (Date.now() + 5).toString(), 
             text: `I heard: "${transcript}"\n\nIs this correct?`, 
             sender: 'ai' 
           };
           setMessages(prev => [...prev, aiMsg]);
-        },
-        (error) => {
-          console.error(error);
+        };
+
+        recognitionRef.current.onerror = () => setIsListening(false);
+        recognitionRef.current.onend = () => setIsListening(false);
+      }
+    }
+  }, []);
+
+  const toggleListening = async () => {
+    if (isListening) {
+      if (Capacitor.isNativePlatform()) {
+        import('@capacitor-community/speech-recognition').then(({ SpeechRecognition }) => {
+          SpeechRecognition.stop().catch(console.error);
+        });
+        setIsListening(false);
+      } else {
+        recognitionRef.current?.stop();
+      }
+    } else {
+      setIsListening(true);
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
+          const perm = await SpeechRecognition.checkPermissions();
+          if (perm.speechRecognition !== 'granted') {
+            const req = await SpeechRecognition.requestPermissions();
+            if (req.speechRecognition !== 'granted') {
+              setIsListening(false);
+              return;
+            }
+          }
+          const langCode = appLanguage === 'urdu' ? 'ur-PK' : 'en-US';
+          const result = await SpeechRecognition.start({
+            language: langCode,
+            maxResults: 1,
+            prompt: "Listening...",
+            partialResults: false,
+            popup: false,
+          });
+          if (result && result.matches && result.matches.length > 0) {
+            const transcript = result.matches[0];
+            setPendingTranscript(transcript);
+            
+            const aiMsg: ChatMessage = { 
+              id: (Date.now() + 5).toString(), 
+              text: `I heard: "${transcript}"\n\nIs this correct?`, 
+              sender: 'ai' 
+            };
+            setMessages(prev => [...prev, aiMsg]);
+          }
+        } catch (err) {
+          console.error('Native speech error:', err);
+        } finally {
           setIsListening(false);
-        },
-        () => {
-          setIsListening(false);
-        },
-        intent.detectedLanguage === 'urdu' ? 'ur-PK' : 'en-US'
-      );
+        }
+      } else {
+        recognitionRef.current?.start();
+      }
     }
   };
 

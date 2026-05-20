@@ -9,7 +9,7 @@ import {
 import { AppLanguage } from '../App';
 import { getUserProfile } from '../lib/profile';
 import { getApiUrl } from '../lib/api';
-import { speechUtils } from '../lib/speech';
+import { Capacitor } from '@capacitor/core';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Stage = 'en_route' | 'arrived' | 'completed' | 'feedback';
@@ -570,31 +570,87 @@ function FeedbackView({
   const [attachedImages, setAttachedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   const TAGS = ['On time', 'Professional', 'Clean work', 'Good value', 'Friendly'];
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
+  // Initialize Speech Recognition
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+        recognitionRef.current.onresult = (event: any) => {
+          const speechTranscript = Array.from(event.results)
+            .map((result: any) => result[0].transcript)
+            .join('');
+          setTranscript(prev => prev + (prev ? ' ' : '') + speechTranscript);
+        };
+        recognitionRef.current.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error);
+          setError('Could not recognize speech. Please try again.');
+          setIsRecording(false);
+        };
+        recognitionRef.current.onend = () => {
+          setIsRecording(false);
+        };
+      }
+    }
+  }, []);
+
   // Start/Stop Recording
   const toggleRecording = async () => {
     if (isRecording) {
-      await speechUtils.stopListening();
-      setIsRecording(false);
+      if (Capacitor.isNativePlatform()) {
+        import('@capacitor-community/speech-recognition').then(({ SpeechRecognition }) => {
+          SpeechRecognition.stop().catch(console.error);
+        });
+        setIsRecording(false);
+      } else {
+        recognitionRef.current?.stop();
+      }
     } else {
       setIsRecording(true);
-      await speechUtils.startListening(
-        (transcriptText) => {
-          setTranscript(prev => prev + (prev ? ' ' : '') + transcriptText);
-        },
-        (errorMsg) => {
-          console.error(errorMsg);
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
+          const perm = await SpeechRecognition.checkPermissions();
+          if (perm.speechRecognition !== 'granted') {
+            const req = await SpeechRecognition.requestPermissions();
+            if (req.speechRecognition !== 'granted') {
+              setError('Microphone permission denied.');
+              setIsRecording(false);
+              return;
+            }
+          }
+          const result = await SpeechRecognition.start({
+            language: 'en-US',
+            maxResults: 1,
+            prompt: "Recording feedback...",
+            partialResults: false,
+            popup: false,
+          });
+          if (result && result.matches && result.matches.length > 0) {
+            const speechTranscript = result.matches[0];
+            setTranscript(prev => prev + (prev ? ' ' : '') + speechTranscript);
+          }
+        } catch (err) {
+          console.error('Native speech error:', err);
           setError('Could not recognize speech. Please try again.');
+        } finally {
           setIsRecording(false);
-        },
-        () => {
+        }
+      } else {
+        if (!recognitionRef.current) {
+          setError('Speech recognition not supported in your browser.');
           setIsRecording(false);
-        },
-        'en-US' // Or use app language if you prefer, but sticking to en-US for generic fallback
-      );
+          return;
+        }
+        recognitionRef.current.start();
+      }
     }
   };
 

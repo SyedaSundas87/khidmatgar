@@ -5,7 +5,7 @@ import { extractIntent, isPlaceholder, i18nResponses } from '../lib/intent';
 import { AppLanguage } from '../App';
 import { getUserProfile } from '../lib/profile';
 import { getApiUrl } from '../lib/api';
-import { speechUtils } from '../lib/speech';
+import { Capacitor } from '@capacitor/core';
 
 interface Message {
   id: string;
@@ -58,6 +58,7 @@ export function ChatView({ onServiceTriggered, appLanguage }: ChatViewProps) {
   const responses = i18nResponses[lang];
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     scrollToBottom();
@@ -67,26 +68,75 @@ export function ChatView({ onServiceTriggered, appLanguage }: ChatViewProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const toggleListening = async () => {
-    if (isListening) {
-      await speechUtils.stopListening();
-      setIsListening(false);
-    } else {
-      setIsListening(true);
-      await speechUtils.startListening(
-        (transcript) => {
+  // Speech Recognition Setup
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+        
+        recognitionRef.current.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
           setInputText(transcript);
           setIsListening(false);
-        },
-        (error) => {
-          console.error(error);
+        };
+
+        recognitionRef.current.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error);
           setIsListening(false);
-        },
-        () => {
+        };
+
+        recognitionRef.current.onend = () => {
           setIsListening(false);
-        },
-        intent.detectedLanguage === 'urdu' ? 'ur-PK' : 'en-US'
-      );
+        };
+      }
+    }
+  }, []);
+
+  const toggleListening = async () => {
+    if (isListening) {
+      if (Capacitor.isNativePlatform()) {
+        import('@capacitor-community/speech-recognition').then(({ SpeechRecognition }) => {
+          SpeechRecognition.stop().catch(console.error);
+        });
+        setIsListening(false);
+      } else {
+        recognitionRef.current?.stop();
+      }
+    } else {
+      setIsListening(true);
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
+          const perm = await SpeechRecognition.checkPermissions();
+          if (perm.speechRecognition !== 'granted') {
+            const req = await SpeechRecognition.requestPermissions();
+            if (req.speechRecognition !== 'granted') {
+              setIsListening(false);
+              return;
+            }
+          }
+          const langCode = appLanguage === 'urdu' ? 'ur-PK' : 'en-US';
+          const result = await SpeechRecognition.start({
+            language: langCode,
+            maxResults: 1,
+            prompt: "Listening...",
+            partialResults: false,
+            popup: false,
+          });
+          if (result && result.matches && result.matches.length > 0) {
+            setInputText(result.matches[0]);
+          }
+        } catch (err) {
+          console.error('Native speech error:', err);
+        } finally {
+          setIsListening(false);
+        }
+      } else {
+        recognitionRef.current?.start();
+      }
     }
   };
 
