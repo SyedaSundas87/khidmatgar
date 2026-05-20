@@ -10,7 +10,7 @@ import { Capacitor } from '@capacitor/core';
 export const getApiUrl = (path: string): string => {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   if (Capacitor.isNativePlatform()) {
-    const base = import.meta.env.VITE_API_BASE_URL || 'https://khidmatgar-cjq6e42ila-el.a.run.app';
+    const base = import.meta.env.VITE_API_BASE_URL || 'https://khidmatgar-575110715344.asia-south1.run.app';
     return `${base}${cleanPath}`;
   }
   return cleanPath;
